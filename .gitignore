@@ -1,0 +1,17 @@
+*.out
+*.test
+*.xml
+*.swp
+.idea/
+.vscode/
+.gobincache/
+*.code-workspace
+*.iml
+*.cov
+*.html
+.tmp/
+/vendor
+.build
+.bins
+.DS_Store
+.gobincache
