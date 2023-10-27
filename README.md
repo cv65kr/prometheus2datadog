@@ -1,6 +1,6 @@
 # Prometheus2Datadog
 
-The tool is allow to convert and send metrics from prometheus to datadog (statsd).
+The tool allows to convert and send metrics from prometheus to datadog (statsd).
 
 Example of prometheus format:
 ```
