@@ -12,10 +12,16 @@ type converter struct {
 	datadogClient *datadogClient
 	logger        *zap.Logger
 	config        Config
+	previous      map[string]int64
 }
 
 func NewConverter(datadogClient *datadogClient, logger *zap.Logger, config Config) converter {
-	return converter{datadogClient: datadogClient, logger: logger, config: config}
+	return converter{
+		datadogClient: datadogClient,
+		logger:        logger,
+		config:        config,
+		previous:      make(map[string]int64),
+	}
 }
 
 func (c converter) Convert(mf map[string]*dto.MetricFamily) {
@@ -36,10 +42,7 @@ func (c converter) Convert(mf map[string]*dto.MetricFamily) {
 					continue
 				}
 
-				err := c.datadogClient.statsd.Count(name, int64(v), c.getTags(m.GetLabel()), 1)
-				if err != nil {
-					c.logger.Error("Error during sending COUNTER metric", zap.Error(err), zap.String("metric", name))
-				}
+				c.counter(name, v, m.GetLabel(), "Error during sending COUNTER metric")
 			}
 			break
 		case dto.MetricType_GAUGE:
@@ -99,6 +102,26 @@ func (c converter) Convert(mf map[string]*dto.MetricFamily) {
 				}
 			}
 		}
+	}
+}
+
+func (c converter) counter(name string, value float64, tags []*dto.LabelPair, errorMessage string) {
+	// Get previous value
+	var previousVal int64 = 0
+	if _, ok := c.previous[name]; ok {
+		previousVal = c.previous[name]
+	}
+
+	currentVal := int64(value)
+	c.previous[name] = currentVal
+
+	if previousVal != 0 && currentVal != 0 {
+		currentVal = max(0, currentVal-previousVal)
+	}
+
+	err := c.datadogClient.statsd.Count(name, currentVal, c.getTags(tags), 1)
+	if err != nil {
+		c.logger.Error(errorMessage, zap.Error(err), zap.String("metric", name))
 	}
 }
 
